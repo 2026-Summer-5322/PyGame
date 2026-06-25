@@ -4,6 +4,7 @@ import pygame
 
 from settings import Settings
 from game_stats import GameStats
+from scoreboard import Scoreboard  # Добавлен импорт панели счета
 from button import Button
 from ship import Ship
 from bullet import Bullet
@@ -21,8 +22,9 @@ class AlienInvasion:
             (self.settings.screen_width, self.settings.screen_height))
         pygame.display.set_caption("Alien Invasion")
 
-        # Create an instance to store game statistics.
+        # Create an instance to store game statistics and a scoreboard.
         self.stats = GameStats(self)
+        self.sb = Scoreboard(self)  # Инициализация доски счета
 
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
@@ -65,9 +67,12 @@ class AlienInvasion:
             # Reset the game settings.
             self.settings.initialize_dynamic_settings()
 
-            # Reset the game statistics.
+            # Reset the game statistics and text images.
             self.stats.reset_stats()
             self.stats.game_active = True
+            self.sb.prep_score()  # Сброс счета на экране до 0
+            self.sb.prep_level()  # Сброс уровня до 1
+            self.sb.prep_ships()  # Отрисовка полных жизней
 
             # Get rid of any remaining aliens and bullets.
             self.aliens.empty()
@@ -122,27 +127,35 @@ class AlienInvasion:
         collisions = pygame.sprite.groupcollide(
             self.bullets, self.aliens, True, True)
 
+        if collisions:
+            # Считаем очки за каждого убитого пришельца
+            for aliens in collisions.values():
+                self.stats.score += self.settings.alien_points * len(aliens)
+            self.sb.prep_score()
+            self.sb.check_high_score()  # Проверка рекорда
+
         if not self.aliens:
             # Destroy existing bullets and create new fleet.
             self.bullets.empty()
             self._create_fleet()
             self.settings.increase_speed()
 
+            # Increase level.
+            self.stats.level += 1
+            self.sb.prep_level()
+
     def _create_fleet(self):
         """Create the fleet of aliens."""
-        # Create an alien and find the number of aliens in a row.
         alien = Alien(self)
         alien_width, alien_height = alien.rect.size
         available_space_x = self.settings.screen_width - (2 * alien_width)
         number_aliens_x = available_space_x // (2 * alien_width)
         
-        # Determine the number of rows of aliens that fit on the screen.
         ship_height = self.ship.rect.height
         available_space_y = (self.settings.screen_height -
                              (3 * alien_height) - ship_height)
         number_rows = available_space_y // (2 * alien_height)
 
-        # Create the full fleet of aliens.
         for row_number in range(number_rows):
             for alien_number in range(number_aliens_x):
                 self._create_alien(alien_number, row_number)
@@ -187,8 +200,9 @@ class AlienInvasion:
     def _ship_hit(self):
         """Respond to the ship being hit by an alien."""
         if self.stats.ships_left > 0:
-            # Decrement ships_left.
+            # Decrement ships_left and update panel.
             self.stats.ships_left -= 1
+            self.sb.prep_ships()  # Обновляем жизни на экране
 
             # Get rid of any remaining aliens and bullets.
             self.aliens.empty()
@@ -209,7 +223,6 @@ class AlienInvasion:
         screen_rect = self.screen.get_rect()
         for alien in self.aliens.sprites():
             if alien.rect.bottom >= screen_rect.bottom:
-                # Treat this the same as if the ship got hit.
                 self._ship_hit()
                 break
 
@@ -221,6 +234,9 @@ class AlienInvasion:
             bullet.draw_bullet()
         
         self.aliens.draw(self.screen)
+
+        # Draw the score information.
+        self.sb.show_score()  # Отрисовка счета, уровня и жизней
 
         # Draw the play button if the game is inactive.
         if not self.stats.game_active:
