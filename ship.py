@@ -1,32 +1,34 @@
 import pygame
-from pygame.sprite import Sprite  # Добавлен импорт
+from pygame.sprite import Sprite
 
-class Ship(Sprite):  # Наследуемся от Sprite
-    """A class to manage the ship."""
+class Ship(Sprite):
+    """A class to manage the player ship model and handle its boundary mechanics."""
 
     def __init__(self, ai_game):
-        """Initialize the ship and set its starting position."""
-        super().__init__()  # Вызываем конструктор суперкласса
+        """
+        Initialize the ship instance, invoke the parent Sprite constructor,
+        load its visual bitmap texture, and establish its starting center-bottom position.
+        """
+        super().__init__()
         self.screen = ai_game.screen
         self.settings = ai_game.settings
         self.screen_rect = ai_game.screen.get_rect()
 
-        # Load the ship image and get its rect.
         self.image = pygame.image.load('images/ship.bmp')
         self.rect = self.image.get_rect()
 
-        # Start each new ship at the bottom center of the screen.
         self.rect.midbottom = self.screen_rect.midbottom
 
-        # Store a decimal value for the ship's horizontal position.
         self.x = float(self.rect.x)
 
-        # Movement flags
         self.moving_right = False
         self.moving_left = False
 
     def update(self):
-        """Update the ship's position based on movement flags."""
+        """
+        Update the ship's horizontal alignment coordinates based on active velocity flags.
+        Enforces strict constraints to prevent the asset rect from breaching the screen borders.
+        """
         if self.moving_right and self.rect.right < self.screen_rect.right:
             self.x += self.settings.ship_speed
         if self.moving_left and self.rect.left > 0:
@@ -35,10 +37,13 @@ class Ship(Sprite):  # Наследуемся от Sprite
         self.rect.x = self.x
 
     def blitme(self):
-        """Draw the ship at its current location."""
+        """Draw the ship's graphical surface layer onto the active game display surface."""
         self.screen.blit(self.image, self.rect)
 
     def center_ship(self):
-        """Center the ship on the screen."""
+        """
+        Force-reset the ship asset constraints back to the bottom-center region 
+        and synchronize its decimal position variable tracker.
+        """
         self.rect.midbottom = self.screen_rect.midbottom
         self.x = float(self.rect.x)
